@@ -249,15 +249,28 @@ async def send_report(event, invoices, period_name):
     pdf.add_page()
     
     # 1. Setup Khmer Font
-    font_path = 'KhmerOScontent.ttf' if os.path.exists('KhmerOScontent.ttf') else r'C:\Windows\Fonts\daunpenh.ttf'
+    # Search for font file (Case-insensitive check for Linux)
+    font_path = r'C:\Windows\Fonts\daunpenh.ttf' # Default fallback
+    if os.path.exists('.'):
+        for f in os.listdir('.'):
+            if f.lower() == 'khmeroscontent.ttf':
+                font_path = f
+                break
+
     try:
         pdf.add_font("Khmer", fname=font_path)
+        # Register the same font as "Bold" (style="B") to prevent crash in table headers
+        pdf.add_font("Khmer", style="B", fname=font_path)
         pdf.set_font("Khmer", size=10)
+    except Exception as e:
+        print(f"⚠️ Font Load Error: {e}")
+        pdf.set_font("Helvetica", size=10)
+
+    try:
         # Enable Text Shaping (Crucial for Khmer Subscripts/Legs)
         pdf.set_text_shaping(True)
     except Exception as e:
-        print(f"⚠️ Font Error: {e}")
-        pdf.set_font("Helvetica", size=10)
+        print(f"⚠️ Text Shaping Error (Legs might be broken): {e}")
 
     # 2. Title
     pdf.set_font(size=14)
