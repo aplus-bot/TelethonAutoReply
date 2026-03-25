@@ -464,7 +464,14 @@ async def main():
             await site.start()
             print(f"🌍 Web server started on port {os.environ['PORT']}")
 
-        await client.start()
+        # Smart Login: Prevents interactive prompts on Render
+        if BOT_TOKEN:
+            await client.start(bot_token=BOT_TOKEN)
+        else:
+            if "PORT" in os.environ and not SESSION_STRING:
+                raise Exception("❌ CRITICAL: SESSION_STRING is missing on Render! Run gen_session.py locally first.")
+            await client.start()
+            
         async with client:
             me = await client.get_me()
             print(f"✅ Combined Bot is running as Userbot 👤: {me.first_name} (ID: {me.id})")
