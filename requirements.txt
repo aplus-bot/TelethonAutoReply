@@ -1,5 +1,6 @@
 telethon
 openpyxl
-reportlab
 aiohttp
 cryptg
+fpdf2
+uharfbuzz
