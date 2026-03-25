@@ -1,0 +1,5 @@
+telethon
+openpyxl
+reportlab
+aiohttp
+cryptg
