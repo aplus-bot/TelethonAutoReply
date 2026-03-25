@@ -258,7 +258,10 @@ async def send_report(event, invoices, period_name):
     # Try to register Khmer Font (DaunPenh) for Windows
     font_name = 'Helvetica'
     try:
-        pdfmetrics.registerFont(TTFont('Khmer', 'C:\\Windows\\Fonts\\daunpenh.ttf'))
+        # Use local KhmerOScontent.ttf if available (Render), else fallback to Windows path
+        font_path = 'KhmerOScontent.ttf' if os.path.exists('KhmerOScontent.ttf') else r'C:\Windows\Fonts\daunpenh.ttf'
+        
+        pdfmetrics.registerFont(TTFont('Khmer', font_path))
         font_name = 'Khmer'
     except:
         pass # Fallback to Helvetica
