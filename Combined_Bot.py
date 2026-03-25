@@ -12,12 +12,7 @@ from collections import defaultdict
 from telethon import TelegramClient, events
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from fpdf import FPDF
 from telethon.sessions import StringSession
 
 # ====== LOGGING ======
@@ -249,47 +244,52 @@ async def send_report(event, invoices, period_name):
     safe_name = re.sub(r'[\\/*?:"<>|]', "", period_name).replace(" ", "_")
     file_bytes.name = f"{safe_name}.xlsx"
 
-    # Create PDF Report
-    pdf_buffer = io.BytesIO()
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Try to register Khmer Font (DaunPenh) for Windows
-    font_name = 'Helvetica'
+    # ====== CREATE PDF REPORT (Using FPDF2) ======
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # 1. Setup Khmer Font
+    font_path = 'KhmerOScontent.ttf' if os.path.exists('KhmerOScontent.ttf') else r'C:\Windows\Fonts\daunpenh.ttf'
     try:
-        # Use local KhmerOScontent.ttf if available (Render), else fallback to Windows path
-        font_path = 'KhmerOScontent.ttf' if os.path.exists('KhmerOScontent.ttf') else r'C:\Windows\Fonts\daunpenh.ttf'
-        
-        pdfmetrics.registerFont(TTFont('Khmer', font_path))
-        font_name = 'Khmer'
-    except:
-        pass # Fallback to Helvetica
+        pdf.add_font("Khmer", fname=font_path)
+        pdf.set_font("Khmer", size=10)
+        # Enable Text Shaping (Crucial for Khmer Subscripts/Legs)
+        pdf.set_text_shaping(True)
+    except Exception as e:
+        print(f"⚠️ Font Error: {e}")
+        pdf.set_font("Helvetica", size=10)
 
-    elements.append(Paragraph(f"Report: {period_name}", styles['Title']))
-    elements.append(Spacer(1, 12))
+    # 2. Title
+    pdf.set_font(size=14)
+    pdf.cell(0, 10, f"Report: {period_name}", align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
 
-    pdf_data = [['No', 'Date', 'ID', 'Name', 'Phone', 'USD', 'Riel']]
+    # 3. Prepare Table Data
+    pdf.set_font(size=9)
+    table_data = [['No', 'Date', 'ID', 'Name', 'Phone', 'USD', 'Riel']]
+    
     for inv in invoices:
-        pdf_data.append([
-            inv['no'], inv['date'].strftime('%d-%b'), inv['student_id'],
-            inv['student_name'], inv['phone'], f"${inv['usd']:,.2f}", f"{inv['riel']:,}"
+        table_data.append([
+            inv['no'], 
+            inv['date'].strftime('%d-%b'), 
+            inv['student_id'],
+            inv['student_name'], 
+            inv['phone'], 
+            f"${inv['usd']:,.2f}", 
+            f"{inv['riel']:,}"
         ])
-    pdf_data.append(['TOTAL', '', '', '', '', f"${total_usd:,.2f}", f"{total_riel:,}"])
+    
+    table_data.append(['TOTAL', '', '', '', '', f"${total_usd:,.2f}", f"{total_riel:,}"])
 
-    # Column widths: No, Date, ID, Name, Phone, USD, Riel
-    col_widths = [30, 45, 40, 140, 70, 60, 65]
-    table = Table(pdf_data, colWidths=col_widths)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, -1), font_name),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    elements.append(table)
-    doc.build(elements)
+    # 4. Render Table
+    with pdf.table() as table:
+        for data_row in table_data:
+            row = table.row()
+            for datum in data_row:
+                row.cell(datum)
+
+    # 5. Output PDF
+    pdf_buffer = io.BytesIO(pdf.output())
     pdf_buffer.seek(0)
     pdf_buffer.name = f"{safe_name}.pdf"
     
