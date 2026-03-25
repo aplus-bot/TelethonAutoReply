@@ -284,7 +284,7 @@ async def send_report(event, invoices, period_name):
     for inv in invoices:
         table_data.append([
             inv['no'], 
-            inv['date'].strftime('%d-%b'), 
+            inv['date'].strftime('%d-%b-%Y'), 
             inv['student_id'],
             inv['student_name'], 
             inv['phone'], 
